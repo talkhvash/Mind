@@ -8,6 +8,7 @@ public class Server {
     DataInputStream dis;
     DataOutputStream dos;
 
+
     public Server() {
         try {
             ServerSocket serverSocket = new ServerSocket(8000);
@@ -26,13 +27,8 @@ public class Server {
 
     private void handleCommand(String command) throws IOException {
 
-
     }
 
-    private void handleComman(String command) throws IOException {
-
-
-    }
     public static void main(String[] args) {
         new Server();
     }

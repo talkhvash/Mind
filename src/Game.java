@@ -2,13 +2,17 @@ import java.util.LinkedList;
 import java.util.Random;
 
 public class Game {
-    private LinkedList<Integer> cards = new LinkedList<>();
-    private Integer lastCard;
+    private LinkedList<Integer> cards;
+    private LinkedList<Player> players;
+    private int lastCard;
+    private int heart;
+    private int ninja;
+    private int playersCount;
+    private int level;
 
     public Game(int nPlayer) {
-
-
-
+        level = 1;
+        playersCount = nPlayer;
 
     }
 
@@ -18,5 +22,16 @@ public class Game {
             if (random.nextBoolean()) cards.addLast(i);
             else cards.addFirst(i);
         }
+        for (int i = 0; i < level * playersCount; i++) {
+
+        }
+
+
     }
+
+    public void putCard(Player player) {
+
+
+    }
+
 }
