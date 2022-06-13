@@ -38,6 +38,7 @@ public class Game {
             Player player = players.get(i);
             for (int j = 0; j < level; j++) {
                 player.addCard(cards.get(i));
+
             }
 
         }
