@@ -29,6 +29,10 @@ public class Server {
 
     }
 
+    private void handleComman(String command) throws IOException {
+
+
+    }
     public static void main(String[] args) {
         new Server();
     }
