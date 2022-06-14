@@ -6,28 +6,28 @@ import java.util.Scanner;
 
 public class Client {
     Scanner scanner;
-    DataInputStream dis;
-    DataOutputStream dos;
+
 
     public Client() {
         scanner = new Scanner(System.in);
         try {
             Socket socket = new Socket("localhost", 8000);
-            dis = new DataInputStream(socket.getInputStream());
-            dos = new DataOutputStream(socket.getOutputStream());
-            initStreams();
+            DataInputStream        dis = new DataInputStream(socket.getInputStream());
+            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+            initStreams(dos, dis);
         } catch (IOException e) {
             e.printStackTrace();
             }
     }
 
-    public void initStreams() {
+    public void initStreams(DataOutputStream dos, DataInputStream dis) {
         Thread reader = new Thread(() -> {
             while (true) {
                 if (scanner.hasNext()) {
                     String command = scanner.nextLine();
                     try {
                         dos.writeUTF(command);
+                        System.out.println("dos.writeUTF(command); " + command);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -39,7 +39,7 @@ public class Client {
             while (true) {
                 try {
                     String message = dis.readUTF();
-                    System.out.println(message);
+                    System.out.println("message " + message);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
