@@ -5,46 +5,49 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
-    Scanner scanner;
-
+    private Scanner scanner;
+    private String authTaken;
 
     public Client() {
         scanner = new Scanner(System.in);
         try {
             Socket socket = new Socket("localhost", 8000);
-            DataInputStream        dis = new DataInputStream(socket.getInputStream());
+            DataInputStream dis = new DataInputStream(socket.getInputStream());
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+
+            // first message
+            authTaken = dis.readUTF();
+
+            // other messages
             initStreams(dos, dis);
-        } catch (IOException e) {
-            e.printStackTrace();
-            }
+
+        } catch (IOException e) {e.printStackTrace();}
     }
 
     public void initStreams(DataOutputStream dos, DataInputStream dis) {
         Thread reader = new Thread(() -> {
             while (true) {
                 if (scanner.hasNext()) {
-                    String command = scanner.nextLine();
                     try {
+                        String command = scanner.nextLine();
+                        command = authTaken + " " + command;
                         dos.writeUTF(command);
-                        System.out.println("dos.writeUTF(command); " + command);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+
+                    } catch (IOException e) {e.printStackTrace();}
                 }
             }
         });
-        reader.start();
         Thread writer = new Thread(() -> {
             while (true) {
                 try {
                     String message = dis.readUTF();
-                    System.out.println("message " + message);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                    message = message.substring(authTaken.length());
+                    System.out.println(message);
+
+                } catch (IOException e) {e.printStackTrace();}
             }
         });
+        reader.start();
         writer.start();
     }
 
