@@ -5,7 +5,7 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
-    private Scanner scanner;
+    private final Scanner scanner;
     private String authTaken;
 
     public Client() {
@@ -32,7 +32,6 @@ public class Client {
                         String command = scanner.nextLine();
                         command = authTaken + " " + command;
                         dos.writeUTF(command);
-
                     } catch (IOException e) {e.printStackTrace();}
                 }
             }
@@ -41,7 +40,6 @@ public class Client {
             while (true) {
                 try {
                     String message = dis.readUTF();
-                    message = message.substring(authTaken.length());
                     System.out.println(message);
 
                 } catch (IOException e) {e.printStackTrace();}

@@ -7,36 +7,46 @@ import java.util.LinkedList;
 import java.util.Random;
 
 public class GameHandler {
-    GameState gameState;
-    HashMap<String, DataOutputStream> dos;
+    private final GameState gameState;
+    private final HashMap<String, DataOutputStream> dos;
 
     public GameHandler(GameState gameState, HashMap<String, DataOutputStream> dos) {
-        this.dos = dos;
         this.gameState = gameState;
+        this.dos = dos;
     }
 
-    public void initializePlayers(int playersCount) {
+    public void start(int playersCount) {
+        initializeFields(playersCount);
+        initializePlayers(playersCount);
+        shuffleCards();
+        printState();
+    }
+
+    private void initializeFields(int playersCount) {
         gameState.setHeart(playersCount);
         gameState.setPlayersCount(playersCount);
         gameState.setRealPlayerCount(gameState.getPlayers().size());
-        // add bot
-        int botCounts = playersCount - gameState.getPlayers().size();
-        for (int i = 0; i < playersCount - botCounts; i++) {
-            gameState.getPlayers().put("bot " + i, new Player("bot " + i, " bot " + i));
-        }
-
         gameState.setGameResult(GameResult.STARTED);
     }
 
+    private void initializePlayers(int playersCount) {
+        int botCounts = playersCount - gameState.getPlayers().size();
+        for (int i = 0; i < botCounts; i++) {
+            Bot bot = new Bot("bot" + i," bot " + i,this, i+1);
+            gameState.getPlayers().put(bot.getId(), bot);
+            gameState.getBots().add(bot);
+        }
+    }
+
+    //
     private void shuffleCards() {
         Random random = new Random();
         LinkedList<Integer> cards = new LinkedList<>();
         for (int i = 1; i < 100; i++) {
-            if (random.nextBoolean()) cards.addLast(i);
-            else cards.addFirst(i);
+            int index = random.nextInt(cards.size() + 1);
+            cards.add(index, i);
         }
-        for (int i = 0; i < gameState.getPlayersCount(); i++) {
-            Player player = gameState.getPlayers().get(i);
+        for (Player player : gameState.getPlayers().values()) {
             for (int j = 0; j < gameState.getLevel(); j++) {
                 player.addCard(cards.getFirst());
                 cards.removeFirst();
@@ -45,32 +55,65 @@ public class GameHandler {
         gameState.setLastCard(0);
     }
 
-    public Boolean putCard(Player player, int number) {
-        boolean output = true;
+    public synchronized void putCard(Player player, Integer number) {
+        for (Bot bot : gameState.getBots()) {
+            if (player != bot) {
+                try {
+                    bot.getThread().wait();
+                } catch (Exception e) {}
+            }
+        }
+
         if (player.getCards().contains(number)) {
+            gameState.stopBots();
+            //System.out.println("stopped");
             player.removeCard(number);
             gameState.setLastCard(number);
-            if (checkPlayedCard(number)) output = false;
+            checkPlayedCard(player, number);
             checkPlayedTurn();
-            checkGameState();
-            return output;
-        } else return null;
+            GameResult gameResult = checkGameState();
+            if (gameResult.equals(GameResult.WINED) || gameResult.equals(GameResult.LOOSED)) {
+                // do nothing here
+            } else {
+                printState();
+                gameState.unstopBots();
+                //System.out.println("unstopped");
+            }
+
+        } else {
+            print(player, "you don't have this card");
+        }
+
+        for (Bot bot : gameState.getBots()) {
+            if (player != bot) {
+                bot.getThread().notify();
+            }
+        }
     }
 
-    private boolean checkPlayedCard(int number) {
+    private void checkPlayedCard(Player player, int number) {
         boolean bool = false;
 
-        for (Player player : gameState.getPlayers().values()) {
-            for (Integer card : player.getCards()) {
+        for (Player item : gameState.getPlayers().values()) {
+            int size = item.getCards().size();
+            int counter = 0;
+            while (counter < size) {
+                int card = item.getCards().get(counter);
                 if (card < number) {
+                    size--;
                     bool = true;
-                    player.removeCard(card);
+                    item.removeCard(card);
+                } else {
+                    counter++;
                 }
             }
         }
 
-        if (bool) gameState.setHeart(gameState.getHeart() - 1);
-        return !bool;
+        if (bool) {
+            gameState.setHeart(gameState.getHeart() - 1);
+            printToAll("player " + player.getName() + " played a wrong card" + "\n");
+        }
+
     }
 
     private void checkPlayedTurn() {
@@ -85,99 +128,63 @@ public class GameHandler {
         // null -> game is not finished
         // true -> players wined
         // false -> players lost
-        if (gameState.getHeart() < 1){
+        if (gameState.getHeart() < 1) {
             gameState.setGameResult(GameResult.LOOSED);
+            printToAll("game is finished and you loosed");
             return GameResult.LOOSED;
-        }
-        else if (gameState.getLevel() > 12){
+        } else if (gameState.getLevel() > 12) {
             gameState.setGameResult(GameResult.WINED);
+            printToAll("game is finished and you wined");
             return GameResult.WINED;
-        }
-        else return gameState.getGameResult();
+        } else return gameState.getGameResult();
     }
 
-    public void print(Player player) throws IOException {
-        String output = player.getName() + "\n";
-        output += player.getCards();
-        for (Player item : gameState.getPlayers().values()) {
-            if (player != item) {
-                output += player.getName() + " " + player.getCards().size() + "\n";
-            }
-        }
-        output += "ninja: " + gameState.getNinja() + "\n";
-        output += "heart: " + gameState.getHeart() + "\n";
-        output += "last played card: " + gameState.getLastCard();
-        dos.get(player.getId()).writeUTF(output);
-    }
-
-    public void printDoNotHave(Player player) throws IOException {
-        String output = "you don't have this card";
-        dos.get(player.getId()).writeUTF(output);
-    }
-
-    public void printWrongPlayed(Player player, Player wrongPlayer) throws IOException {
-        String output = player.getName() + "\n";
-        output += "player " + wrongPlayer.getName() + " played a wrong card";
-        output += player.getCards();
-        for (Player item : gameState.getPlayers().values()) {
-            if (player != item) {
-                output += player.getName() + " " + player.getCards().size() + "\n";
-            }
-        }
-        output += "ninja: " + gameState.getNinja() + "\n";
-        output += "heart: " + gameState.getHeart() + "\n";
-        output += "last played card: " + gameState.getLastCard();
-        dos.get(player.getId()).writeUTF(output);
-    }
-
-    public void printRequest (Player player, Player requestedPlayer) throws IOException {
-        String output = "player " + requestedPlayer.getName() + "requested using ninja cart";
-        dos.get(player.getId()).writeUTF(output);
-    }
-
-    public void printAnswerToRequest (Player player, Player answeredPlayer, boolean bool) throws IOException {
-        String output;
-        if (bool){
-            output = "player " + answeredPlayer.getName() + "answered yes to ninja request";
-        } else {
-            output = "player " + answeredPlayer.getName() + "answered no to ninja request";
-        }
-        dos.get(player.getId()).writeUTF(output);
-    }
-
+    // ninja
     public void requestNinja(Player player) {
+        gameState.stopBots();
+        //System.out.println("stopped");
         gameState.setRequestedNinja(true);
+        printToAll("player " + player.getName() + " requested using ninja cart");
     }
 
-    public void answerNinja(Player player, boolean answer) {
-        if (answer){
+    public void answerNinja(Player player, boolean answer) throws IOException {
+        if (answer) {
+            printToAll("player " + player.getName() + "answered yes to ninja request");
             gameState.getNinjaAnswers().add(true);
-            if (gameState.getNinjaAnswers().size()==gameState.getRealPlayerCount()){
-
+            if (gameState.getNinjaAnswers().size() == gameState.getRealPlayerCount() - 1) {
+                printToAll("ninja accepted");
+                ninjaProcess();
+                gameState.getNinjaAnswers().clear();
+                checkPlayedTurn();
+                gameState.unstopBots();
+                //System.out.println("unstopped");
             }
         } else {
-            //todo
+            printToAll("player " + player.getName() + " denied the request for using ninja cart");
+            gameState.getNinjaAnswers().clear();
+            gameState.setRequestedNinja(false);
         }
     }
 
-    private void ninjaProcess (){
-        int max = 0;
-        String output = "ninja has been used and";
-        for (Player player : gameState.getPlayers().values()){
-            int min = 101;
-            for (int a : player.getCards()){
-                if (a<min){
-                    min = a;
-                }
+    private void ninjaProcess() {
+        printToAll("ninja has been used and");
+
+        Integer max = Integer.MIN_VALUE;
+        for (Player player : gameState.getPlayers().values()) {
+            Integer min = Integer.MAX_VALUE;
+            for (Integer a : player.getCards()) {
+                min = Math.min(a, min);
             }
-            output += player.getName() + " put " + min;
+            printToAll(player.getName() + " put " + min);
             player.getCards().remove(min);
-            if (min>max){
-                max = min;
-            }
+            max = Math.max(min, max);
         }
         gameState.setLastCard(max);
 
+        gameState.setNinja(gameState.getNinja() - 1);
+        gameState.setRequestedNinja(false);
+
+        printState();
     }
 
     // get Player
@@ -186,8 +193,40 @@ public class GameHandler {
     }
 
     public void addPlayer(Player player) {
-        this.gameState.getPlayers().put(player.getId(), player);
+        gameState.getPlayers().put(player.getId(), player);
+        gameState.getRealPlayers().put(player.getId(), player);
     }
 
+
+    // print
+    public void print(Player player, String message) {
+        try {
+            dos.get(player.getId()).writeUTF(message);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void printToAll(String message) {
+        for (Player player : gameState.getRealPlayers().values()) {
+            print(player, message);
+        }
+    }
+
+    public void printState() {
+        for (Player player : gameState.getRealPlayers().values()) {
+            String output = player.getName() + " " + player.getCards().toString() + "\n";
+            for (Player item : gameState.getPlayers().values()) {
+                if (player != item) {
+                    output += item.getName() + " " + item.getCards().size() + "\n";
+                }
+            }
+            output += "level: " + gameState.getLevel() + "\n";
+            output += "ninja: " + gameState.getNinja() + "\n";
+            output += "heart: " + gameState.getHeart() + "\n";
+            output += "last played card: " + gameState.getLastCard();
+            print(player, output);
+        }
+    }
 
 }

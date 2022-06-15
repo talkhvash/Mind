@@ -1,33 +1,49 @@
 package Logic;
 
-import java.io.DataOutputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Random;
 
 public class GameState {
     // hashmap<authTaken, Player>
     private final HashMap<String, Player> players;
+    private final HashMap<String, Player> realPlayers;
+    private int realPlayerCount;
     private int playersCount;
     private int level;
     private int heart;
-    private GameResult gameResult;
+    private int lastCard;
     private int ninja;
     private boolean requestedNinja;
     private LinkedList<Boolean> ninjaAnswers;
-    private int lastCard;
-    private int realPlayerCount;
+    private GameResult gameResult;
+    private LinkedList<Bot> bots;
 
     public GameState() {
         players = new HashMap<>();
+        realPlayers = new HashMap<>();
+        ninjaAnswers = new LinkedList<>();
+        bots = new LinkedList<>();
         level = 1;
         ninja = 2;
         gameResult = GameResult.IN;
     }
 
-    // getters and setters
+    public void stopBots (){
+        for (Bot bot : bots){
+            bot.setStopped(true);
+        }
+    }
 
+    public void unstopBots (){
+        for (Bot bot : bots){
+            bot.setStopped(false);
+        }
+    }
+
+    // getters and setters
+    public HashMap<String, Player> getRealPlayers() {
+        return realPlayers;
+    }
 
     public void setPlayersCount(int playersCount) {
         this.playersCount = playersCount;
@@ -103,5 +119,13 @@ public class GameState {
 
     public void setRealPlayerCount(int realPlayerCount) {
         this.realPlayerCount = realPlayerCount;
+    }
+
+    public LinkedList<Bot> getBots() {
+        return bots;
+    }
+
+    public void setBots(LinkedList<Bot> bots) {
+        this.bots = bots;
     }
 }

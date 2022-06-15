@@ -8,11 +8,10 @@ import java.net.Socket;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Random;
-import java.util.Scanner;
-import java.util.random.RandomGenerator;
+
 
 public class Server {
-    private HashMap<String, DataOutputStream> doses = new HashMap<>();
+    private final HashMap<String, DataOutputStream> doses = new HashMap<>();
     private String host;
     private CommandHandler commandHandler;
 
@@ -29,9 +28,6 @@ public class Server {
                 DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
                 initializeAuthTaken(dos);
-
-
-
                 initializeReaderThread(dis);
             }
         } catch (IOException e) {e.printStackTrace();}
@@ -42,9 +38,14 @@ public class Server {
     }
 
     private void initializeAuthTaken(DataOutputStream dos) {
-        SecureRandom secureRandom = new SecureRandom();
-        String authTaken = secureRandom.nextInt() + "";
+        Random random = new SecureRandom();
+        String authTaken = random.nextInt() + "";
+
         if (host == null) host = authTaken;
+
+        try { dos.writeUTF(authTaken);
+        } catch (IOException e) {e.printStackTrace();}
+
         doses.put(authTaken, dos);
         if (commandHandler == null) commandHandler = new CommandHandler(doses, host);
     }
@@ -59,5 +60,6 @@ public class Server {
         });
         reader.start();
     }
+
 
 }

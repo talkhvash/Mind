@@ -5,7 +5,7 @@ import java.util.LinkedList;
 public class Player {
     private final String id;
     private final String name;
-    private final LinkedList<Integer> cards;
+    protected final LinkedList<Integer> cards;
 
     public Player(String name, String id) {
         this.name = name;
@@ -13,6 +13,7 @@ public class Player {
         cards = new LinkedList<>();
     }
 
+    // setters and getters
     public String getName() {
         return name;
     }
